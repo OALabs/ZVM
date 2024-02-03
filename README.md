@@ -15,3 +15,10 @@ Notes are also available here.
 - [Introduction To VM Protection - VMZeus](https://research.openanalysis.net/vmzues/zeus/vm/obfuscation/tutorial/2024/01/07/into-to-vms.html)
 - [VM Reverse Engineering Part 2 - Disassembly](https://research.openanalysis.net/vmzues/zeus/vm/obfuscation/tutorial/2024/01/21/vmzeus-disassembler.html)
 
+## No PRs
+Because this project is meant to be a community effort on stream we won’t be accepting PRs. Aside from some maintenance/cleanup **all coding will be done on-stream**. If you have feature requests or suggestions leave your feedback as an Issue or come chat with us on [**Discord**](https://discord.gg/oalabs).
+
+## Join Us!
+ 💖 Check out our [**schedule**](https://www.twitch.tv/oalabslive/schedule) we stream Sundays at 1300 EST
+
+[![Chat](https://img.shields.io/badge/Chat-Discord-blueviolet)](https://discord.gg/oalabs) [![Support](https://img.shields.io/badge/Support-Patreon-FF424D)](https://www.patreon.com/oalabs)
