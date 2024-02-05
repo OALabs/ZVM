@@ -28,7 +28,7 @@ def create_register_class(register_name):
     return Register
 
 
-registers = [create_register_class("Reg" + str(i))() for i in range(0, 16)]
+registers = [create_register_class("reg" + str(i))() for i in range(0, 16)]
 
 
 class DataSize:
@@ -62,6 +62,7 @@ class Operand:
     def __init__(self):
         self.text = ""
         self.op_size = 0
+        self.type = ""
 
 
 class OperandData(Operand):
@@ -70,6 +71,7 @@ class OperandData(Operand):
         self.op_size = 0
         self.data_size = data_size
         self.text = f"{self.data_size}(Data[DP])"
+        self.type = "mem"
 
     def parse(self, code):
         pass
@@ -80,7 +82,8 @@ class OperandDP(Operand):
         super().__init__()
         self.op_size = 0
         self.data_size = data_size
-        self.text = f"{self.data_size}(DP)"
+        self.text = "dp"
+        self.type = "reg"
 
     def parse(self, code):
         pass
@@ -91,7 +94,8 @@ class OperandPC(Operand):
         super().__init__()
         self.op_size = 0
         self.data_size = data_size
-        self.text = f"{self.data_size}(PC)"
+        self.text = "pc"
+        self.type = "reg"
 
     def parse(self, code):
         pass
@@ -105,12 +109,13 @@ class OperandRegisterLow(Operand):
         self.reg = None
         self.data_size = data_size
         self.text = ""
+        self.type = "reg"
 
     def parse(self, code):
         self.reg_index = code[0] & 0x0F
         self.reg = registers[self.reg_index]
         self.data_size = self.data_size
-        self.text = f"{self.data_size}({self.reg.text})"
+        self.text = f"{self.reg.text}"
 
 
 class OperandRegisterHigh(Operand):
@@ -121,12 +126,13 @@ class OperandRegisterHigh(Operand):
         self.reg = None
         self.data_size = data_size
         self.text = ""
+        self.type = "reg"
 
     def parse(self, code):
         self.reg_index = (code[0] >> 4) & 0x0F
         self.reg = registers[self.reg_index]
         self.data_size = self.data_size
-        self.text = f"{self.data_size}({self.reg.text})"
+        self.text = f"{self.reg.text}"
 
 
 class OperandImmediate(Operand):
@@ -136,6 +142,7 @@ class OperandImmediate(Operand):
         self.data_size = data_size
         self.value = None
         self.text = ""
+        self.type = "imm"
 
     def parse(self, code):
         int_size = self.data_size.value
@@ -156,8 +163,10 @@ class OperandImmediate(Operand):
 class OperandLoopCounter(Operand):
     def __init__(self, data_size: DataSize):
         super().__init__()
+        self.data_size = data_size
         self.op_size = 0
-        self.text = f"LoopCounter"
+        self.text = "loop_counter"
+        self.type = "reg"
 
     def parse(self, code):
         pass
@@ -169,6 +178,7 @@ class OperandBuffer(Operand):
         self.op_size = size.value
         self.value = None
         self.text = ""
+        self.type = "buffer"
 
     def parse(self, code):
         self.value = code[0 : self.op_size]
@@ -187,38 +197,38 @@ class Instruction:
             operand.parse(code[self.size :])
             self.size += operand.op_size
             self.text += " " + operand.text
-        print("size: " + str(self.size))
-        print("operand count: " + str(len(self.operands)))
+        #print("size: " + str(self.size))
+        #print("operand count: " + str(len(self.operands)))
         # Handle special case for nop of larger than one byte
         if self.size > 1 and len(self.operands) == 0:
             # We have real operands (bytes to skip) but no instruction operands
             # Use the first byte of the first operand as key
-            print(f"self.key ^= code[1]({hex(code[1])})")
+            #print(f"self.key ^= code[1]({hex(code[1])})")
             self.key ^= code[1]
         else:
             # Assumption, the first operand is never larger than 1 byte
             if len(self.operands) == 0:
                 # Key is the opcode
-                print(f"self.key ^= code[0]({hex(code[0])})")
+                #print(f"self.key ^= code[0]({hex(code[0])})")
                 self.key ^= code[0]
             elif len(self.operands) == 1:
                 # Check if the operand is a real operand or a fake operand
                 if self.operands[0].op_size != 0:
                     # Key is the first byte in the operand
-                    print(f"self.key ^= code[1]({hex(code[1])})")
+                    #print(f"self.key ^= code[1]({hex(code[1])})")
                     self.key ^= code[1]
                 else:
                     # Key is the opcode
-                    print(f"self.key ^= code[0]({hex(code[0])})")
+                    #print(f"self.key ^= code[0]({hex(code[0])})")
                     self.key ^= code[0]
             elif len(self.operands) == 2:
                 # If the both operands are real operands, the key is the first byte of the second operand
                 if self.operands[0].op_size != 0 and self.operands[1].op_size != 0:
-                    print(f"self.key ^= code[2]({hex(code[2])})")
+                    #print(f"self.key ^= code[2]({hex(code[2])})")
                     self.key ^= code[2]
                 # If either of the operands is fake, the key is the first byte of the second operand (real operand 1)
                 elif self.operands[0].op_size == 0 or self.operands[1].op_size == 0:
-                    print(f"self.key ^= code[1]({hex(code[1])})")
+                    #print(f"self.key ^= code[1]({hex(code[1])})")
                     self.key ^= code[1]
                 else:
                     raise Exception("Invalid operands")
@@ -226,7 +236,7 @@ class Instruction:
                 # There is only one case with more than 2 operands, rc4
                 # key_len, data_len, key_buff[key_len], (fake)data_buff[data_len]
                 # The key is the first byte in the third operand
-                print(f"self.key ^= code[3]({hex(code[2])})")
+                #print(f"self.key ^= code[3]({hex(code[2])})")
                 self.key ^= code[3]
             else:
                 raise Exception("Invalid operands")
@@ -496,7 +506,7 @@ class h_set_loop_imm_b(Instruction):
     def __init__(self, code):
         super().__init__(code)
         self.size = 1
-        self.text = "set loop"
+        self.text = "mov"
         self.key = 0x4E
         self.operands = [
             OperandLoopCounter(DataSize.DWORD()),
@@ -508,7 +518,7 @@ class h_set_loop_imm_w(Instruction):
     def __init__(self, code):
         super().__init__(code)
         self.size = 1
-        self.text = "set loop"
+        self.text = "mov"
         self.key = 0x9D
         self.operands = [
             OperandLoopCounter(DataSize.DWORD()),
@@ -516,11 +526,11 @@ class h_set_loop_imm_w(Instruction):
         ]
 
 
-class h_set_value_imm_dw(Instruction):
+class h_set_loop_imm_dw(Instruction):
     def __init__(self, code):
         super().__init__(code)
         self.size = 1
-        self.text = "set loop"
+        self.text = "mov"
         self.key = 0x61
         self.operands = [
             OperandLoopCounter(DataSize.DWORD()),
@@ -1061,7 +1071,7 @@ instructions = [
     h_rc4,
     h_set_loop_imm_b,
     h_set_loop_imm_w,
-    h_set_value_imm_dw,
+    h_set_loop_imm_dw,
     h_shift_data_imm_w,
     h_loop_b,
     h_loop_w,
