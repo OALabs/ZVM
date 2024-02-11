@@ -136,26 +136,39 @@ class OperandRegisterHigh(Operand):
 
 
 class OperandImmediate(Operand):
-    def __init__(self, data_size: DataSize):
+    def __init__(self, data_size: DataSize, signed=False):
         super().__init__()
         self.op_size = data_size.value
         self.data_size = data_size
         self.value = None
         self.text = ""
         self.type = "imm"
+        self.signed = signed
 
     def parse(self, code):
         int_size = self.data_size.value
         if int_size == 1:
-            self.value = ord(code[0:int_size])
+            if self.signed:
+                self.value = struct.unpack("<b", code[0:int_size])[0]
+            else: 
+                self.value = ord(code[0:int_size])
             self.text = f"{self.data_size}({hex(self.value)})"
         elif int_size == 2:
-            self.value = struct.unpack("<H", code[0:int_size])[0]
+            if self.signed:
+                self.value = struct.unpack("<h", code[0:int_size])[0]
+            else:
+                self.value = struct.unpack("<H", code[0:int_size])[0]
             self.text = f"{self.data_size}({hex(self.value)})"
         elif int_size == 4:
-            self.value = struct.unpack("<I", code[0:int_size])[0]
+            if self.signed:
+                self.value = struct.unpack("<i", code[0:int_size])[0]
+            else:
+                self.value = struct.unpack("<I", code[0:int_size])[0]
             self.text = f"{self.data_size}({hex(self.value)})"
         else:
+            if self.signed:
+                # Error cannot have signed data Buffer
+                raise Exception("Attempt to parse signed data buffer")
             self.value = code[0:int_size]
             self.text = f"{self.data_size}({self.value.hex()})"
 
@@ -190,6 +203,8 @@ class Instruction:
         self.size = 0
         self.text = ""
         self.key = 0
+        # Some instructions have an implied data increment
+        self.data_increment = 0
         self.operands = []
 
     def parse(self, code):
@@ -275,6 +290,7 @@ class xor_data_imm_b(Instruction):
         self.size = 1
         self.text = "xor"
         self.key = 0x51
+        self.data_increment = 1
         self.operands = [
             OperandData(DataSize.BYTE()),
             OperandImmediate(DataSize.BYTE()),
@@ -287,6 +303,7 @@ class h_xor_data_imm_w(Instruction):
         self.size = 1
         self.text = "xor"
         self.key = 0x32
+        self.data_increment = 2
         self.operands = [
             OperandData(DataSize.WORD()),
             OperandImmediate(DataSize.WORD()),
@@ -299,6 +316,7 @@ class h_xor_data_imm_dw(Instruction):
         self.size = 1
         self.text = "xor"
         self.key = 0x7C
+        self.data_increment = 4
         self.operands = [
             OperandData(DataSize.DWORD()),
             OperandImmediate(DataSize.DWORD()),
@@ -311,6 +329,7 @@ class h_add_data_imm_b(Instruction):
         self.size = 1
         self.text = "add"
         self.key = 0xB4
+        self.data_increment = 1
         self.operands = [
             OperandData(DataSize.BYTE()),
             OperandImmediate(DataSize.BYTE()),
@@ -322,6 +341,7 @@ class h_add_data_imm_w(Instruction):
         super().__init__(code)
         self.size = 1
         self.text = "add"
+        self.data_increment = 2
         self.key = 0x16
         self.operands = [
             OperandData(DataSize.WORD()),
@@ -334,6 +354,7 @@ class h_add_data_imm_dw(Instruction):
         super().__init__(code)
         self.size = 1
         self.text = "add"
+        self.data_increment = 4
         self.key = 2
         self.operands = [
             OperandData(DataSize.DWORD()),
@@ -347,6 +368,7 @@ class h_sub_data_imm_b(Instruction):
         self.size = 1
         self.text = "sub"
         self.key = 0xC9
+        self.data_increment = 1
         self.operands = [
             OperandData(DataSize.BYTE()),
             OperandImmediate(DataSize.BYTE()),
@@ -359,6 +381,7 @@ class h_sub_data_imm_w(Instruction):
         self.size = 1
         self.text = "sub"
         self.key = 0xF7
+        self.data_increment = 2
         self.operands = [
             OperandData(DataSize.WORD()),
             OperandImmediate(DataSize.WORD()),
@@ -371,6 +394,7 @@ class h_sub_data_imm_dw(Instruction):
         self.size = 1
         self.text = "sub"
         self.key = 0x71
+        self.data_increment = 4
         self.operands = [
             OperandData(DataSize.DWORD()),
             OperandImmediate(DataSize.DWORD()),
@@ -383,6 +407,7 @@ class h_rol_b_data_b(Instruction):
         self.size = 1
         self.text = "rol"
         self.key = 0xC
+        self.data_increment = 1
         self.operands = [
             OperandData(DataSize.BYTE()),
             OperandImmediate(DataSize.BYTE()),
@@ -395,6 +420,7 @@ class h_rol_w_data_b(Instruction):
         self.size = 1
         self.text = "rol"
         self.key = 0xFA
+        self.data_increment = 2
         self.operands = [
             OperandData(DataSize.WORD()),
             OperandImmediate(DataSize.BYTE()),
@@ -407,6 +433,7 @@ class h_rol_dw_data_b(Instruction):
         self.size = 1
         self.text = "rol"
         self.key = 0x57
+        self.data_increment = 4
         self.operands = [
             OperandData(DataSize.DWORD()),
             OperandImmediate(DataSize.BYTE()),
@@ -419,6 +446,7 @@ class h_ror_b_data_b(Instruction):
         self.size = 1
         self.text = "ror"
         self.key = 0x98
+        self.data_increment = 1
         self.operands = [
             OperandData(DataSize.BYTE()),
             OperandImmediate(DataSize.BYTE()),
@@ -431,6 +459,7 @@ class h_ror_w_data_b(Instruction):
         self.size = 1
         self.text = "ror"
         self.key = 0xD3
+        self.data_increment = 2
         self.operands = [
             OperandData(DataSize.WORD()),
             OperandImmediate(DataSize.BYTE()),
@@ -443,6 +472,7 @@ class h_ror_dw_data_b(Instruction):
         self.size = 1
         self.text = "ror"
         self.key = 0xFB
+        self.data_increment = 4
         self.operands = [
             OperandData(DataSize.DWORD()),
             OperandImmediate(DataSize.BYTE()),
@@ -455,6 +485,7 @@ class h_not_b_data(Instruction):
         self.size = 1
         self.text = "not"
         self.key = 0xFA
+        self.data_increment = 1
         self.operands = [OperandData(DataSize.BYTE())]
 
 
@@ -464,6 +495,7 @@ class h_not_w_data(Instruction):
         self.size = 1
         self.text = "not"
         self.key = 0x28
+        self.data_increment = 2
         self.operands = [OperandData(DataSize.WORD())]
 
 
@@ -473,6 +505,7 @@ class h_not_dw_data(Instruction):
         self.size = 1
         self.text = "not"
         self.key = 4
+        self.data_increment = 4
         self.operands = [OperandData(DataSize.DWORD())]
 
 
@@ -482,6 +515,7 @@ class h_dw_data_shuffle(Instruction):
         self.size = 1
         self.text = "shuffle"
         self.key = 0x82
+        self.data_increment = 4
         self.operands = [
             OperandData(DataSize.DWORD()),
             OperandImmediate(DataSize.BYTE()),
@@ -494,12 +528,14 @@ class h_rc4(Instruction):
         self.size = 1
         self.text = "rc4"
         self.key = 0xC9
+        # The data increment is the size of the data sent to the rc4
+        self.data_increment = code[2]
         self.operands = [
             OperandImmediate(DataSize.BYTE()),  # key_len
             OperandImmediate(DataSize.BYTE()),  # data_len
             OperandBuffer(DataSize(code[1])),  # key_buff[key_len]
-            OperandData(DataSize(code[2])),
-        ]  # data_buff[data_len]
+            OperandData(DataSize(code[2])), # data_buff[data_len]
+        ]  
 
 
 class h_set_loop_imm_b(Instruction):
@@ -538,13 +574,17 @@ class h_set_loop_imm_dw(Instruction):
         ]
 
 
-class h_shift_data_imm_w(Instruction):
+class h_add_dp_imm_w(Instruction):
+    # This instruction adds a signed value to the data pointer
     def __init__(self, code):
         super().__init__(code)
         self.size = 1
         self.text = "add"
         self.key = 0x8F
-        self.operands = [OperandDP(DataSize.DWORD()), OperandImmediate(DataSize.WORD())]
+        # In this case the data increment is not implied but is a part of the instruction
+        # We will handle this as an operand
+        self.data_increment = 0 
+        self.operands = [OperandDP(DataSize.DWORD()), OperandImmediate(DataSize.WORD(), signed=True)]
 
 
 class h_loop_b(Instruction):
@@ -574,7 +614,7 @@ class h_mov_reg_imm_b(Instruction):
         self.text = "mov"
         self.key = 0xB3
         self.operands = [
-            OperandRegisterLow(DataSize.BYTE()),
+            OperandRegisterLow(DataSize.DWORD()),
             OperandImmediate(DataSize.BYTE()),
         ]
 
@@ -586,7 +626,7 @@ class h_mov_reg_imm_w(Instruction):
         self.text = "mov"
         self.key = 0x9D
         self.operands = [
-            OperandRegisterLow(DataSize.WORD()),
+            OperandRegisterLow(DataSize.DWORD()),
             OperandImmediate(DataSize.WORD()),
         ]
 
@@ -610,7 +650,7 @@ class h_mov_reg_reg_b(Instruction):
         self.text = "mov"
         self.key = 0xD5
         self.operands = [
-            OperandRegisterLow(DataSize.BYTE()),
+            OperandRegisterLow(DataSize.DWORD()),
             OperandRegisterHigh(DataSize.BYTE()),
         ]
 
@@ -622,7 +662,7 @@ class h_mov_reg_reg_w(Instruction):
         self.text = "mov"
         self.key = 0x9D
         self.operands = [
-            OperandRegisterLow(DataSize.WORD()),
+            OperandRegisterLow(DataSize.DWORD()),
             OperandRegisterHigh(DataSize.WORD()),
         ]
 
@@ -646,7 +686,7 @@ class h_add_reg_reg_b(Instruction):
         self.text = "add"
         self.key = 0x1F
         self.operands = [
-            OperandRegisterLow(DataSize.BYTE()),
+            OperandRegisterLow(DataSize.DWORD()),
             OperandRegisterHigh(DataSize.BYTE()),
         ]
 
@@ -658,7 +698,7 @@ class h_add_reg_reg_w(Instruction):
         self.text = "add"
         self.key = 0xC9
         self.operands = [
-            OperandRegisterLow(DataSize.WORD()),
+            OperandRegisterLow(DataSize.DWORD()),
             OperandRegisterHigh(DataSize.WORD()),
         ]
 
@@ -682,7 +722,7 @@ class h_sub_reg_reg_b(Instruction):
         self.text = "sub"
         self.key = 0x75
         self.operands = [
-            OperandRegisterLow(DataSize.BYTE()),
+            OperandRegisterLow(DataSize.DWORD()),
             OperandRegisterHigh(DataSize.BYTE()),
         ]
 
@@ -694,7 +734,7 @@ class h_sub_reg_reg_w(Instruction):
         self.text = "sub"
         self.key = 0x8B
         self.operands = [
-            OperandRegisterLow(DataSize.WORD()),
+            OperandRegisterLow(DataSize.DWORD()),
             OperandRegisterHigh(DataSize.WORD()),
         ]
 
@@ -718,7 +758,7 @@ class h_xor_reg2_to_reg1_b(Instruction):
         self.text = "xor"
         self.key = 0x77
         self.operands = [
-            OperandRegisterLow(DataSize.BYTE()),
+            OperandRegisterLow(DataSize.DWORD()),
             OperandRegisterHigh(DataSize.BYTE()),
         ]
 
@@ -730,7 +770,7 @@ class h_xor_reg2_to_reg1_w(Instruction):
         self.text = "xor"
         self.key = 0x79
         self.operands = [
-            OperandRegisterLow(DataSize.WORD()),
+            OperandRegisterLow(DataSize.DWORD()),
             OperandRegisterHigh(DataSize.WORD()),
         ]
 
@@ -754,7 +794,7 @@ class h_reg_add_imm_b(Instruction):
         self.text = "add"
         self.key = 0x49
         self.operands = [
-            OperandRegisterLow(DataSize.BYTE()),
+            OperandRegisterLow(DataSize.DWORD()),
             OperandImmediate(DataSize.BYTE()),
         ]
 
@@ -766,7 +806,7 @@ class h_reg_add_imm_w(Instruction):
         self.text = "add"
         self.key = 0xF3
         self.operands = [
-            OperandRegisterLow(DataSize.WORD()),
+            OperandRegisterLow(DataSize.DWORD()),
             OperandImmediate(DataSize.WORD()),
         ]
 
@@ -790,7 +830,7 @@ class h_reg_sub_imm_b(Instruction):
         self.text = "sub"
         self.key = 0x54
         self.operands = [
-            OperandRegisterLow(DataSize.BYTE()),
+            OperandRegisterLow(DataSize.DWORD()),
             OperandImmediate(DataSize.BYTE()),
         ]
 
@@ -802,7 +842,7 @@ class h_reg_sub_imm_w(Instruction):
         self.text = "sub"
         self.key = 0x53
         self.operands = [
-            OperandRegisterLow(DataSize.WORD()),
+            OperandRegisterLow(DataSize.DWORD()),
             OperandImmediate(DataSize.WORD()),
         ]
 
@@ -826,7 +866,7 @@ class h_reg_xor_imm_b(Instruction):
         self.text = "xor"
         self.key = 0x6E
         self.operands = [
-            OperandRegisterLow(DataSize.BYTE()),
+            OperandRegisterLow(DataSize.DWORD()),
             OperandImmediate(DataSize.BYTE()),
         ]
 
@@ -838,7 +878,7 @@ class h_reg_xor_imm_w(Instruction):
         self.text = "xor"
         self.key = 0x9A
         self.operands = [
-            OperandRegisterLow(DataSize.WORD()),
+            OperandRegisterLow(DataSize.DWORD()),
             OperandImmediate(DataSize.WORD()),
         ]
 
@@ -861,6 +901,7 @@ class mw_add_reg_to_data_b(Instruction):
         self.size = 1
         self.text = "add"
         self.key = 0x46
+        self.data_increment = 1
         self.operands = [
             OperandData(DataSize.BYTE()),
             OperandRegisterLow(DataSize.BYTE()),
@@ -873,6 +914,7 @@ class mw_add_reg_to_data_w(Instruction):
         self.size = 1
         self.text = "add"
         self.key = 0x32
+        self.data_increment = 2
         self.operands = [
             OperandData(DataSize.WORD()),
             OperandRegisterLow(DataSize.WORD()),
@@ -885,6 +927,7 @@ class mw_add_reg_to_data_dw(Instruction):
         self.size = 1
         self.text = "add"
         self.key = 0x3D
+        self.data_increment = 4
         self.operands = [
             OperandData(DataSize.DWORD()),
             OperandRegisterLow(DataSize.DWORD()),
@@ -897,6 +940,7 @@ class mw_subs_reg_from_data_b(Instruction):
         self.size = 1
         self.text = "sub"
         self.key = 4
+        self.data_increment = 1
         self.operands = [
             OperandData(DataSize.BYTE()),
             OperandRegisterLow(DataSize.BYTE()),
@@ -909,6 +953,7 @@ class mw_subs_reg_from_data_w(Instruction):
         self.size = 1
         self.text = "sub"
         self.key = 0xDB
+        self.data_increment = 2
         self.operands = [
             OperandData(DataSize.WORD()),
             OperandRegisterLow(DataSize.WORD()),
@@ -921,6 +966,7 @@ class mw_subs_reg_from_data_dw(Instruction):
         self.size = 1
         self.text = "sub"
         self.key = 0xC6
+        self.data_increment = 4
         self.operands = [
             OperandData(DataSize.DWORD()),
             OperandRegisterLow(DataSize.DWORD()),
@@ -933,6 +979,7 @@ class mw_xor_data_with_reg_b(Instruction):
         self.size = 1
         self.text = "xor"
         self.key = 0x7D
+        self.data_increment = 1
         self.operands = [
             OperandData(DataSize.BYTE()),
             OperandRegisterLow(DataSize.BYTE()),
@@ -945,6 +992,7 @@ class mw_xor_data_with_reg_w(Instruction):
         self.size = 1
         self.text = "xor"
         self.key = 0x71
+        self.data_increment = 2
         self.operands = [
             OperandData(DataSize.WORD()),
             OperandRegisterLow(DataSize.WORD()),
@@ -957,6 +1005,7 @@ class mw_xor_data_with_reg_dw(Instruction):
         self.size = 1
         self.text = "xor"
         self.key = 0x7A
+        self.data_increment = 4
         self.operands = [
             OperandData(DataSize.DWORD()),
             OperandRegisterLow(DataSize.DWORD()),
@@ -970,7 +1019,7 @@ class h_mov_data_to_reg_b(Instruction):
         self.text = "mov"
         self.key = 0xBC
         self.operands = [
-            OperandRegisterLow(DataSize.BYTE()),
+            OperandRegisterLow(DataSize.DWORD()),
             OperandData(DataSize.BYTE()),
         ]
 
@@ -982,7 +1031,7 @@ class h_mov_data_to_reg_w(Instruction):
         self.text = "mov"
         self.key = 0x3D
         self.operands = [
-            OperandRegisterLow(DataSize.WORD()),
+            OperandRegisterLow(DataSize.DWORD()),
             OperandData(DataSize.WORD()),
         ]
 
@@ -1005,6 +1054,7 @@ class mw_push_reg_to_data_b(Instruction):
         self.size = 1
         self.text = "mov"
         self.key = 0x22
+        self.data_increment = 1
         self.operands = [
             OperandData(DataSize.BYTE()),
             OperandRegisterLow(DataSize.BYTE()),
@@ -1017,6 +1067,7 @@ class mw_push_reg_to_data_w(Instruction):
         self.size = 1
         self.text = "mov"
         self.key = 0xF8
+        self.data_increment = 2
         self.operands = [
             OperandData(DataSize.WORD()),
             OperandRegisterLow(DataSize.WORD()),
@@ -1029,6 +1080,7 @@ class mw_push_reg_to_data_dw(Instruction):
         self.size = 1
         self.text = "mov"
         self.key = 0x56
+        self.data_increment = 4
         self.operands = [
             OperandData(DataSize.DWORD()),
             OperandRegisterLow(DataSize.DWORD()),
@@ -1072,7 +1124,7 @@ instructions = [
     h_set_loop_imm_b,
     h_set_loop_imm_w,
     h_set_loop_imm_dw,
-    h_shift_data_imm_w,
+    h_add_dp_imm_w,
     h_loop_b,
     h_loop_w,
     h_mov_reg_imm_b,
