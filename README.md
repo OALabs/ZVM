@@ -15,7 +15,7 @@ Notes from our streams are also available here.
 - [VM Reverse Engineering Part 2 - Disassembly](https://research.openanalysis.net/vmzues/zeus/vm/obfuscation/tutorial/2024/01/21/vmzeus-disassembler.html)
 
 ## Documentation
-For the Binary Ninja Plugin we loosely followed the binja Architecture Plugin guides and had a lot of help from @xusheng6.
+For the Binary Ninja Plugin we loosely followed the binja Architecture Plugin guides and had a lot of help from [@xusheng6](https://github.com/xusheng6).
 
 - [A Guide to Architecture Plugins (Part 1)](https://binary.ninja/2020/01/08/guide-to-architecture-plugins-part1.html)
 - [A Guide To Architecture Plugins (Part 2)](https://binary.ninja/2021/12/09/guide-to-architecture-plugins-part2.html)
