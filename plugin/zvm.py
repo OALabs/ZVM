@@ -1,5 +1,5 @@
 import struct
-
+from typing import List
 
 class LoopCounter:
     text = "LoopCounter"
@@ -1097,7 +1097,7 @@ class h_vm_exit(Instruction):
 
 
 # Create an array of the instruction functions
-instructions = [
+instructions: List[Instruction] = [
     nop_b,
     nop_w,
     nop_dw,
